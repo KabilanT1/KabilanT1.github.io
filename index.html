@@ -21,9 +21,16 @@ h1{font-size:1.3rem;margin:0}
 .big{font-size:2rem;font-weight:700;margin-top:4px}
 .sub{font-size:.85rem;color:var(--muted);margin-top:4px}
 svg{max-width:100%;height:auto}
+.paused .v{opacity:.55}
 .legend{display:flex;gap:16px;justify-content:center;font-size:.85rem;color:var(--muted);margin-top:6px}
 .legend i{display:inline-block;width:12px;height:3px;vertical-align:middle;margin-right:6px}
 #err{color:#e0503c;margin:0 0 12px;display:none}
+.ctl{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;align-items:center;margin-top:8px}
+.ctl input[type=password]{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);min-width:230px}
+button{padding:9px 18px;border:0;border-radius:8px;font-weight:600;cursor:pointer;color:#fff}
+#bPause{background:#e0a030}#bResume{background:#2fb36a}
+button:disabled{opacity:.5;cursor:not-allowed}
+label{font-size:.85rem;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -34,8 +41,8 @@ svg{max-width:100%;height:auto}
   </header>
   <p id="err"></p>
 
-  <div class="grid">
-    <section class="card">
+  <div class="grid" id="grid">
+    <section class="card v">
       <h2>Temperature</h2>
       <svg viewBox="0 0 140 300" width="140" role="img" aria-label="Thermometer">
         <rect x="45" y="15" width="30" height="215" rx="15" fill="var(--bg)" stroke="var(--line)" stroke-width="2"/>
@@ -48,7 +55,7 @@ svg{max-width:100%;height:auto}
       <div class="sub" id="tempRange">&nbsp;</div>
     </section>
 
-    <section class="card">
+    <section class="card v">
       <h2>Humidity</h2>
       <svg viewBox="0 0 200 125" width="280" role="img" aria-label="Humidity gauge">
         <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="var(--line)" stroke-width="16" stroke-linecap="round"/>
@@ -61,14 +68,25 @@ svg{max-width:100%;height:auto}
       <div class="sub" id="humNote">&nbsp;</div>
     </section>
 
-    <section class="card wide">
+    <section class="card wide v">
       <h2>Trend</h2>
       <svg id="chart" viewBox="0 0 600 200" width="100%" role="img" aria-label="Temperature and humidity trend"></svg>
       <div class="legend">
         <span><i style="background:var(--tc)"></i>Temperature (left, &deg;C)</span>
         <span><i style="background:var(--hc)"></i>Humidity (right, %)</span>
       </div>
-      <div class="sub" id="extra">&nbsp;</div>
+    </section>
+
+    <section class="card wide">
+      <h2>Node control</h2>
+      <div class="ctl">
+        <input type="password" id="key" placeholder="Control channel write key" autocomplete="off">
+        <button id="bPause">Pause node</button>
+        <button id="bResume">Resume node</button>
+      </div>
+      <div class="ctl"><label><input type="checkbox" id="remember"> Remember key on this device</label></div>
+      <div class="sub" id="cmdState">&nbsp;</div>
+      <div class="sub" id="msg">The key is never stored in this page's code. Paste it here to send commands.</div>
     </section>
   </div>
 </main>
@@ -76,22 +94,25 @@ svg{max-width:100%;height:auto}
 <script>
 // ---------- CONFIG ----------
 const CONFIG = {
-  channelId: 3532567,        // your ThingSpeak channel ID
-  readKey: "1BZ6YR3OBMQ44BUA",         // leave empty for a public channel (a key here is visible to anyone who opens the page)
-  results: 120,        // number of recent entries to load (max 8000)
-  refreshMs: 20000,    // how often to reload
-  staleSec: 120,       // mark the node "offline" if no data for this long
+  channelId: 3532567,        // your DATA channel ID
+  controlChannelId: 3532622, // your CONTROL channel ID (make it public so the page can show the last command)
+  controlWriteKey: "RQAP3J5Z3QOK92NY", // CONTROL channel WRITE API key. Anyone who can open this page can read it in the source!
+                       // Leave empty to paste the key into the page instead.
+  readKey: "1BZ6YR3OBMQ44BUA",         // empty for a public channel (a key here is visible to anyone)
+  results: 200,        // recent entries to load (max 8000)
+  refreshMs: 20000,
+  staleSec: 120,       // "Offline" if no entry (including heartbeats) for this long
   tMin: 0, tMax: 50    // thermometer scale in °C
 };
 
 const $ = id => document.getElementById(id);
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
-let lastTime = null;
+let lastTime = null, running = null, pending = null, cooldownUntil = 0;
 
 // Thermometer scale
 const TY0 = 240, TH = 215;
 const yOf = t => TY0 - clamp((t - CONFIG.tMin) / (CONFIG.tMax - CONFIG.tMin), 0, 1) * TH;
-(function drawTicks() {
+(function () {
   let s = "";
   for (let t = CONFIG.tMin; t <= CONFIG.tMax; t += 10) {
     const y = yOf(t);
@@ -123,7 +144,7 @@ function setHum(h) {
 }
 
 function drawChart(pts) {
-  if (pts.length < 2) return;
+  if (pts.length < 2) { $("chart").innerHTML = ""; return; }
   const W = 600, H = 200, L = 38, R = 38, T = 10, B = 22;
   const t0 = pts[0].t, t1 = pts[pts.length - 1].t;
   const range = k => {
@@ -151,14 +172,17 @@ function drawChart(pts) {
   $("chart").innerHTML = s;
 }
 
-function updateAge() {
+function updateStatus() {
   if (lastTime == null) return;
   const age = Math.round((Date.now() - lastTime) / 1000);
   const stale = age > CONFIG.staleSec;
-  $("dot").style.background = stale ? "#e0503c" : "#2fb36a";
-  $("statusText").textContent = (stale ? "Offline - " : "Live - ") + "last reading " +
-    (age < 90 ? age + " s" : Math.round(age / 60) + " min") + " ago";
+  const label = stale ? "Offline" : running === false ? "Paused" : "Live";
+  $("dot").style.background = stale ? "#e0503c" : running === false ? "#e0a030" : "#2fb36a";
+  $("statusText").textContent = `${label} - last update ` + (age < 90 ? age + " s" : Math.round(age / 60) + " min") + " ago";
+  $("grid").classList.toggle("paused", !stale && running === false);
 }
+
+const msg = t => { $("msg").textContent = t; };
 
 async function load() {
   try {
@@ -167,36 +191,87 @@ async function load() {
     const r = await fetch(url);
     if (!r.ok) throw new Error("ThingSpeak returned HTTP " + r.status + " (check channel ID / read key)");
     const feeds = (await r.json()).feeds || [];
-    const pts = feeds.map(f => ({
-      t: new Date(f.created_at).getTime(),
-      temp: parseFloat(f.field1), hum: parseFloat(f.field2)
-    })).filter(p => !isNaN(p.temp) && !isNaN(p.hum));
-    if (!pts.length) throw new Error("No readings in the channel yet");
+    if (!feeds.length) throw new Error("No entries in the channel yet");
 
-    const last = pts[pts.length - 1];
-    lastTime = last.t;
-    setTemp(last.temp);
-    setHum(last.hum);
-    drawChart(pts);
+    const lastFeed = feeds[feeds.length - 1];
+    lastTime = new Date(lastFeed.created_at).getTime();
+    const flag = parseFloat(lastFeed.field3);
+    running = flag === 1 ? true : flag === 0 ? false : null;
 
-    const temps = pts.map(p => p.temp);
-    $("tempRange").textContent = `Min ${Math.min(...temps).toFixed(1)} / Max ${Math.max(...temps).toFixed(1)} °C (last ${pts.length} readings)`;
+    const pts = feeds.map(f => ({ t: new Date(f.created_at).getTime(), temp: parseFloat(f.field1), hum: parseFloat(f.field2) }))
+      .filter(p => !isNaN(p.temp) && !isNaN(p.hum));
+    if (pts.length) {
+      const last = pts[pts.length - 1];
+      setTemp(last.temp); setHum(last.hum); drawChart(pts);
+      const temps = pts.map(p => p.temp);
+      $("tempRange").textContent = `Min ${Math.min(...temps).toFixed(1)} / Max ${Math.max(...temps).toFixed(1)} °C (${pts.length} readings)`;
+    } else {
+      $("tempRange").textContent = "No temperature readings in the recent data";
+    }
 
-    const withRssi = feeds.filter(f => !isNaN(parseFloat(f.field3)));
-    const rssi = withRssi.length ? parseFloat(withRssi[withRssi.length - 1].field3) : null;
-    $("extra").textContent = rssi !== null ? `Node Wi-Fi signal: ${rssi} dBm` : "\u00a0";
-
+    if (pending) {
+      if (running === (pending.want === 1)) { msg(pending.want ? "Node confirmed: running." : "Node confirmed: paused."); pending = null; }
+      else if (Date.now() - pending.at > 75000) { msg("No confirmation yet. Check the write key and that the node is online."); pending = null; }
+    }
     $("err").style.display = "none";
-    updateAge();
+    updateStatus();
   } catch (e) {
     $("err").textContent = "Could not load data: " + e.message;
     $("err").style.display = "block";
   }
 }
 
+async function loadCmd() {
+  if (!CONFIG.controlChannelId) return;
+  try {
+    const r = await fetch(`https://api.thingspeak.com/channels/${CONFIG.controlChannelId}/feeds/last.json`);
+    if (!r.ok) return;
+    const j = await r.json();
+    const v = parseFloat(j.field1);
+    if (isNaN(v)) return;
+    const mins = Math.round((Date.now() - new Date(j.created_at).getTime()) / 60000);
+    $("cmdState").textContent = `Last command on control channel: ${v === 0 ? "PAUSE" : "RUN"} (${mins < 1 ? "just now" : mins + " min ago"})`;
+  } catch (e) {}
+}
+
+async function send(want) {
+  const key = (CONFIG.controlWriteKey || $("key").value).trim();
+  if (!key) { msg("Set controlWriteKey in CONFIG, or enter the write key above."); return; }
+  if (Date.now() < cooldownUntil) { msg("Wait about 15 s between commands (ThingSpeak limit)."); return; }
+  try {
+    if ($("remember").checked) localStorage.setItem("ctrlKey", key); else localStorage.removeItem("ctrlKey");
+  } catch (e) {}
+  cooldownUntil = Date.now() + 16000;
+  pending = { want, at: Date.now() };
+  msg(want ? "Resume sent, waiting for the node to confirm (up to ~40 s)..." : "Pause sent, waiting for the node to confirm (up to ~40 s)...");
+  try {
+    // no-cors: the response can't be read, so confirmation comes from the node's own heartbeat
+    await fetch(`https://api.thingspeak.com/update?api_key=${encodeURIComponent(key)}&field1=${want}`, { mode: "no-cors" });
+    setTimeout(loadCmd, 2500);
+  } catch (e) {
+    pending = null; cooldownUntil = 0;
+    msg("Network error while sending the command.");
+  }
+}
+
+try {
+  const k = localStorage.getItem("ctrlKey");
+  if (k) { $("key").value = k; $("remember").checked = true; }
+} catch (e) {}
+if (CONFIG.controlWriteKey) {
+  $("key").style.display = "none";
+  $("remember").closest(".ctl").style.display = "none";
+  msg("Write key is set in the page's CONFIG.");
+}
+$("bPause").onclick = () => send(0);
+$("bResume").onclick = () => send(1);
+
 load();
+loadCmd();
+setInterval(loadCmd, 15000);
 setInterval(load, CONFIG.refreshMs);
-setInterval(updateAge, 1000);
+setInterval(() => { if (pending) load(); }, 5000);
+setInterval(updateStatus, 1000);
 </script>
 </body>
 </html>
