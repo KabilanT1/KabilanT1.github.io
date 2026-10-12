@@ -1,353 +1,202 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>kabilan ~ </title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sensor Node Dashboard</title>
 <style>
-  :root{
-    --bg: #0d1117;
-    --bg-alt: #12191f;
-    --bg-card: #151c23;
-    --fg: #c9d1d9;
-    --fg-dim: #7d8994;
-    --accent: #6cb6ff;
-    --accent-dim: #3a6a94;
-    --comment: #6a9955;
-    --prompt: #e3b341;
-    --border: #22292f;
-    --font: 'IBM Plex Mono', 'JetBrains Mono', monospace;
-  }
-  *{box-sizing:border-box;}
-  html{scroll-behavior:smooth;}
-  body{
-    margin:0;
-    background:var(--bg);
-    color:var(--fg);
-    font-family:var(--font);
-    line-height:1.6;
-    font-size:15px;
-  }
-  ::selection{background:var(--accent-dim); color:#fff;}
-  a{color:var(--accent); text-decoration:none;}
-  a:hover{text-decoration:underline;}
-  a:focus-visible, button:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
-
-  .wrap{max-width:760px; margin:0 auto; padding:0 24px;}
-
-  /* ---- HERO / TERMINAL ---- */
-  .hero{
-    min-height:100svh;
-    display:flex;
-    flex-direction:column;
-    justify-content:center;
-    padding:40px 0;
-  }
-  .term{
-    background:var(--bg-alt);
-    border:1px solid var(--border);
-    border-radius:6px;
-    overflow:hidden;
-    box-shadow:0 20px 60px rgba(0,0,0,0.4);
-  }
-  .term-bar{
-    display:flex;
-    align-items:center;
-    gap:8px;
-    padding:10px 14px;
-    background:#0a0e12;
-    border-bottom:1px solid var(--border);
-  }
-  .dot{width:10px;height:10px;border-radius:50%;}
-  .dot.r{background:#ff5f56;}
-  .dot.y{background:#ffbd2e;}
-  .dot.g{background:#27c93f;}
-  .term-title{margin-left:10px; color:var(--fg-dim); font-size:12px;}
-  .term-body{
-    padding:22px 20px 30px;
-    font-size:14px;
-    min-height:280px;
-  }
-  .line{white-space:pre-wrap; word-break:break-word;}
-  .prompt-user{color:var(--comment);}
-  .prompt-path{color:var(--accent);}
-  .prompt-sym{color:var(--prompt);}
-  .out{color:var(--fg);}
-  .out-dim{color:var(--fg-dim);}
-  .cursor{
-    display:inline-block; width:8px; height:16px;
-    background:var(--accent); vertical-align:middle;
-    animation:blink 1s step-start infinite;
-  }
-  @keyframes blink{50%{opacity:0;}}
-  .ls-links a{
-    display:inline-block;
-    margin-right:18px;
-    color:var(--accent);
-  }
-
-  /* ---- SECTION SCAFFOLD ---- */
-  section{padding:70px 0; border-top:1px solid var(--border);}
-  .path{
-    color:var(--fg-dim);
-    font-size:13px;
-    margin-bottom:6px;
-  }
-  .path span{color:var(--comment);}
-  h2{
-    font-size:22px;
-    margin:0 0 24px;
-    color:var(--fg);
-    font-weight:600;
-  }
-  h2::before{content:"# "; color:var(--comment);}
-  p{margin:0 0 14px; color:var(--fg);}
-  .muted{color:var(--fg-dim);}
-
-  /* ---- ABOUT ---- */
-  .about-body{max-width:600px;}
-
-  /* ---- PROJECTS ---- */
-  .proj{
-    background:var(--bg-card);
-    border:1px solid var(--border);
-    border-radius:6px;
-    margin-bottom:14px;
-  }
-  .proj summary{
-    cursor:pointer;
-    list-style:none;
-    padding:16px 18px;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    gap:12px;
-  }
-  .proj summary::-webkit-details-marker{display:none;}
-  .proj summary .fname{color:var(--accent); font-weight:600;}
-  .proj summary .meta{color:var(--fg-dim); font-size:12px; white-space:nowrap;}
-  .proj[open] summary{border-bottom:1px solid var(--border);}
-  .proj-body{padding:16px 18px; font-size:14px; color:var(--fg-dim);}
-  .proj-body .tag{
-    display:inline-block; background:var(--bg-alt); border:1px solid var(--border);
-    color:var(--comment); font-size:11px; padding:2px 8px; border-radius:3px;
-    margin:2px 6px 2px 0;
-  }
-  .chev{color:var(--fg-dim); transition:transform .15s;}
-  .proj[open] .chev{transform:rotate(90deg);}
-
-  /* ---- DEEPDIVES / LOG ---- */
-  .log-line{
-    display:flex; gap:14px; padding:10px 0;
-    border-bottom:1px dashed var(--border);
-    font-size:13.5px;
-  }
-  .log-line:last-child{border-bottom:none;}
-  .ts{color:var(--fg-dim); flex-shrink:0; width:96px;}
-  .tag2{color:var(--prompt); flex-shrink:0;}
-  .log-text{color:var(--fg);}
-
-  /* ---- NOW ---- */
-  .now-grid{display:flex; flex-direction:column; gap:10px;}
-  .now-row{display:flex; gap:14px; align-items:baseline;}
-  .now-row .k{color:var(--comment); width:110px; flex-shrink:0; font-size:13px;}
-  .bar-track{flex:1; height:6px; background:var(--bg-alt); border:1px solid var(--border); border-radius:3px; overflow:hidden;}
-  .bar-fill{height:100%; background:var(--accent);}
-
-  /* ---- FOOTER ---- */
-  footer{padding:50px 0 70px;}
-  .contact-list a{display:block; margin-bottom:6px;}
-
-  @media (max-width:600px){
-    .term-body{font-size:13px;}
-    h2{font-size:19px;}
-    .ts{width:76px; font-size:11px;}
-  }
+:root{--bg:#f4f6f9;--card:#fff;--text:#1c2430;--muted:#6b7686;--line:#d5dbe4;--tc:#e0503c;--hc:#2b7fd4}
+@media (prefers-color-scheme:dark){:root{--bg:#10151c;--card:#1a212b;--text:#e6ebf2;--muted:#8d99aa;--line:#2f3a48}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:980px;margin:0 auto;padding:20px}
+header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+h1{font-size:1.3rem;margin:0}
+#status{font-size:.9rem;color:var(--muted);display:flex;align-items:center;gap:8px}
+#dot{width:10px;height:10px;border-radius:50%;background:#999}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;text-align:center}
+.card h2{font-size:.95rem;font-weight:600;color:var(--muted);margin:0 0 8px;text-transform:uppercase;letter-spacing:.05em}
+.wide{grid-column:1/-1}
+.big{font-size:2rem;font-weight:700;margin-top:4px}
+.sub{font-size:.85rem;color:var(--muted);margin-top:4px}
+svg{max-width:100%;height:auto}
+.legend{display:flex;gap:16px;justify-content:center;font-size:.85rem;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:12px;height:3px;vertical-align:middle;margin-right:6px}
+#err{color:#e0503c;margin:0 0 12px;display:none}
 </style>
 </head>
 <body>
+<main>
+  <header>
+    <h1>Sensor Node Dashboard</h1>
+    <div id="status"><span id="dot"></span><span id="statusText">Loading...</span></div>
+  </header>
+  <p id="err"></p>
 
-<div class="hero">
-  <div class="wrap">
-    <div class="term">
-      <div class="term-bar">
-        <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
-        <div class="term-title">kabilan@arch: ~</div>
+  <div class="grid">
+    <section class="card">
+      <h2>Temperature</h2>
+      <svg viewBox="0 0 140 300" width="140" role="img" aria-label="Thermometer">
+        <rect x="45" y="15" width="30" height="215" rx="15" fill="var(--bg)" stroke="var(--line)" stroke-width="2"/>
+        <circle cx="60" cy="252" r="32" fill="var(--bg)" stroke="var(--line)" stroke-width="2"/>
+        <rect id="mercury" x="52" y="240" width="16" height="0" fill="#999"/>
+        <circle id="bulb" cx="60" cy="252" r="24" fill="#999"/>
+        <g id="ticks" font-size="11" fill="var(--muted)"></g>
+      </svg>
+      <div class="big" id="tempVal">--</div>
+      <div class="sub" id="tempRange">&nbsp;</div>
+    </section>
+
+    <section class="card">
+      <h2>Humidity</h2>
+      <svg viewBox="0 0 200 125" width="280" role="img" aria-label="Humidity gauge">
+        <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="var(--line)" stroke-width="16" stroke-linecap="round"/>
+        <path id="humArc" d="M 20 100 A 80 80 0 0 1 20 100" fill="none" stroke="#999" stroke-width="16" stroke-linecap="round"/>
+        <text x="20" y="120" font-size="10" fill="var(--muted)" text-anchor="middle">0</text>
+        <text x="100" y="22" font-size="10" fill="var(--muted)" text-anchor="middle">50</text>
+        <text x="180" y="120" font-size="10" fill="var(--muted)" text-anchor="middle">100</text>
+      </svg>
+      <div class="big" id="humVal">--</div>
+      <div class="sub" id="humNote">&nbsp;</div>
+    </section>
+
+    <section class="card wide">
+      <h2>Trend</h2>
+      <svg id="chart" viewBox="0 0 600 200" width="100%" role="img" aria-label="Temperature and humidity trend"></svg>
+      <div class="legend">
+        <span><i style="background:var(--tc)"></i>Temperature (left, &deg;C)</span>
+        <span><i style="background:var(--hc)"></i>Humidity (right, %)</span>
       </div>
-      <div class="term-body" id="termBody"></div>
-    </div>
+      <div class="sub" id="extra">&nbsp;</div>
+    </section>
   </div>
-</div>
-
-<section id="about">
-  <div class="wrap">
-    <div class="path">~/<span>about</span></div>
-    <h2>about</h2>
-    <div class="about-body">
-      <p>3rd-year CS Engineering student at SASTRA, running Arch Linux because the stock setup was never going to be enough. I like understanding things down to the mechanism &mdash; why a cache line invalidates, why a Jacobian singularity breaks an IK solver, why the off-by-one actually happens instead of just fixing it and moving on.</p>
-      <p class="muted">Interests sit at the intersection of ML systems, computer architecture, and robotics &mdash; heading toward GPU memory optimization and ML infrastructure work. Long-term plan get into ML research</p>
-      <p class="muted">Outside of that: football, gym, motorcycles, cinema, bro.</p>
-    </div>
-  </div>
-</section>
-
-<section id="projects">
-  <div class="wrap">
-    <div class="path">~/<span>projects</span></div>
-    <h2>PROJECTS</h2>
-
-    <details class="proj" open>
-      <summary>
-        <span><span class="fname">ik-trainer/</span> &mdash; interactive 2-DOF IK trainer</span>
-        <span class="meta">active <span class="chev">&rsaquo;</span></span>
-      </summary>
-      <div class="proj-body">
-        <p>Web-based trainer for a 2-DOF robotic arm: an analytic inverse-kinematics solver acts as ground truth, while a small MLP learns to approximate the same mapping &mdash; built to see where a learned model diverges from the closed-form solution and why.</p>
-        <span class="tag">kinematics.js</span><span class="tag">MLP</span><span class="tag">canvas rendering</span>
-      </div>
-    </details>
-
-    <details class="proj">
-      <summary>
-        <span><span class="fname">rrr-arm/</span> &mdash; 3-DOF robotic arm</span>
-        <span class="meta">hardware <span class="chev">&rsaquo;</span></span>
-      </summary>
-      <div class="proj-body">
-        <p>Physical 3-DOF RRR arm on MG995/MG996R servos and Arduino. Derived DH parameters and forward kinematics in MATLAB, wrote geometric IK by hand, and drove it over serial &mdash; the project that turned "I know FK/IK in theory" into "I know why it breaks in practice."</p>
-        <span class="tag">DH parameters</span><span class="tag">MATLAB</span><span class="tag">Arduino / serial</span>
-      </div>
-    </details>
-
-    <details class="proj">
-      <summary>
-        <span><span class="fname">dsa-log/</span> &mdash; topic-blocked DSA practice</span>
-        <span class="meta">ongoing <span class="chev">&rsaquo;</span></span>
-      </summary>
-      <div class="proj-body">
-        <p>Structured problem-solving log, not a dump of solutions &mdash; organized by topic (strings, bitmasking, graphs) with notes on the approach and the bug that cost the most time on each one.</p>
-        <span class="tag">C++</span><span class="tag">Codeforces</span>
-      </div>
-    </details>
-
-    <details class="proj">
-      <summary>
-        <span><span class="fname">web-project/</span> &mdash; first React build</span>
-        <span class="meta">learning <span class="chev">&rsaquo;</span></span>
-      </summary>
-      <div class="proj-body">
-        <p>First real React project coming from a C++ background &mdash; still early, kept here because "in progress and honest about it" is more useful than hiding the learning curve.</p>
-        <span class="tag">React</span><span class="tag">JS</span>
-      </div>
-    </details>
-  </div>
-</section>
-
-<section id="deepdives">
-  <div class="wrap">
-    <div class="path">~/<span>deepdives</span> <span class="muted">&mdash; tail -f log.txt</span></div>
-    <h2>deepdives</h2>
-    <div class="log">
-      <div class="log-line"><span class="ts">recent</span><span class="tag2">[arch]</span><span class="log-text">why MESI cache coherence needs a shared/modified distinction, and what happens when two cores race on the same line</span></div>
-      <div class="log-line"><span class="ts">recent</span><span class="tag2">[arch]</span><span class="log-text">Tomasulo's algorithm &mdash; register renaming as the fix for false dependencies in out-of-order execution</span></div>
-      <div class="log-line"><span class="ts">recent</span><span class="tag2">[ai]</span><span class="log-text">AIMA agent taxonomy: why "rational" and "omniscient" aren't the same thing, and where goal-based agents stop being enough</span></div>
-      <div class="log-line"><span class="ts">recent</span><span class="tag2">[sys]</span><span class="log-text">Hyprland &rarr; GNOME: what NVIDIA + Wayland friction actually costs versus tiling-window productivity gains</span></div>
-      <div class="log-line"><span class="ts">ongoing</span><span class="tag2">[cv]</span><span class="log-text">poking at Gaussian splatting as a rendering approach, coming from a MediaPipe head-tracking parallax project</span></div>
-    </div>
-  </div>
-</section>
-
-<section id="now">
-  <div class="wrap">
-    <div class="path">~/<span>now</span> <span class="muted">&mdash; top</span></div>
-    <h2>now</h2>
-    <div class="now-grid">
-      <div class="now-row"><span class="k">dsa-sprint</span><div class="bar-track"><div class="bar-fill" style="width:55%"></div></div><span class="muted" style="font-size:12px;">100 problems / 20 days</span></div>
-      <div class="now-row"><span class="k">ik-trainer</span><div class="bar-track"><div class="bar-fill" style="width:40%"></div></div><span class="muted" style="font-size:12px;">MLP vs analytic solver</span></div>
-      <div class="now-row"><span class="k">web-project</span><div class="bar-track"><div class="bar-fill" style="width:25%"></div></div><span class="muted" style="font-size:12px;">first React build</span></div>
-    </div>
-  </div>
-</section>
-
-<footer>
-  <div class="wrap">
-    <div class="path">~/<span>contact</span> <span class="muted">&mdash; cat contact.txt</span></div>
-    <h2>contact</h2>
-    <div class="contact-list">
-      <a href="https://github.com/YOUR_USERNAME" target="_blank" rel="noopener">github.com/YOUR_USERNAME</a>
-      <a href="mailto:YOUR_EMAIL">YOUR_EMAIL</a>
-      <a href="https://linkedin.com/in/YOUR_PROFILE" target="_blank" rel="noopener">linkedin.com/in/YOUR_PROFILE</a>
-    </div>
-    <p class="muted" style="margin-top:24px; font-size:12px;">built by hand, not from a template.</p>
-  </div>
-</footer>
+</main>
 
 <script>
-(function(){
-  const body = document.getElementById('termBody');
-  const seq = [
-    {type:'cmd', user:'kabilan', path:'~', text:'whoami'},
-    {type:'out', text:'kabilan &mdash; CS Engineering, SASTRA &middot; ML systems / architecture / robotics'},
-    {type:'cmd', user:'kabilan', path:'~', text:'cat about.txt'},
-    {type:'out', text:'building things to understand them, not just to ship them.'},
-    {type:'cmd', user:'kabilan', path:'~', text:'ls'},
-    {type:'ls'}
-  ];
+// ---------- CONFIG ----------
+const CONFIG = {
+  channelId: 3532567,        // your ThingSpeak channel ID
+  readKey: "1BZ6YR3OBMQ44BUA",         // leave empty for a public channel (a key here is visible to anyone who opens the page)
+  results: 120,        // number of recent entries to load (max 8000)
+  refreshMs: 20000,    // how often to reload
+  staleSec: 120,       // mark the node "offline" if no data for this long
+  tMin: 0, tMax: 50    // thermometer scale in °C
+};
 
-  function typeLine(el, text, cb){
-    let i = 0;
-    function step(){
-      if(i <= text.length){
-        el.innerHTML = text.slice(0,i);
-        i++;
-        setTimeout(step, 16);
-      } else if(cb){ cb(); }
-    }
-    step();
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+let lastTime = null;
+
+// Thermometer scale
+const TY0 = 240, TH = 215;
+const yOf = t => TY0 - clamp((t - CONFIG.tMin) / (CONFIG.tMax - CONFIG.tMin), 0, 1) * TH;
+(function drawTicks() {
+  let s = "";
+  for (let t = CONFIG.tMin; t <= CONFIG.tMax; t += 10) {
+    const y = yOf(t);
+    s += `<line x1="80" x2="88" y1="${y}" y2="${y}" stroke="var(--muted)"/><text x="94" y="${y + 4}">${t}</text>`;
   }
-
-  function renderNext(idx){
-    if(idx >= seq.length) return;
-    const item = seq[idx];
-    const line = document.createElement('div');
-    line.className = 'line';
-
-    if(item.type === 'cmd'){
-      const prefix = document.createElement('span');
-      prefix.innerHTML = '<span class="prompt-user">'+item.user+'</span><span class="prompt-sym">@arch</span><span class="prompt-path"> '+item.path+'</span><span class="prompt-sym"> $ </span>';
-      const typed = document.createElement('span');
-      const cursor = document.createElement('span');
-      cursor.className = 'cursor';
-      line.appendChild(prefix);
-      line.appendChild(typed);
-      line.appendChild(cursor);
-      body.appendChild(line);
-      typeLine(typed, item.text, function(){
-        cursor.remove();
-        setTimeout(function(){ renderNext(idx+1); }, 220);
-      });
-    } else if(item.type === 'out'){
-      line.innerHTML = '<span class="out-dim">'+item.text+'</span>';
-      body.appendChild(line);
-      setTimeout(function(){ renderNext(idx+1); }, 260);
-    } else if(item.type === 'ls'){
-      line.className = 'line ls-links';
-      line.innerHTML =
-        '<a href="#about">about/</a>' +
-        '<a href="#projects">projects/</a>' +
-        '<a href="#deepdives">deepdives/</a>' +
-        '<a href="#now">now/</a>' +
-        '<a href="#contact">contact/</a>';
-      body.appendChild(line);
-      const finalPrompt = document.createElement('div');
-      finalPrompt.className = 'line';
-      finalPrompt.innerHTML = '<span class="prompt-user">kabilan</span><span class="prompt-sym">@arch</span><span class="prompt-path"> ~</span><span class="prompt-sym"> $ </span><span class="cursor"></span>';
-      body.appendChild(finalPrompt);
-    }
-  }
-
-  renderNext(0);
+  $("ticks").innerHTML = s;
 })();
-</script>
 
+function setTemp(t) {
+  const frac = clamp((t - CONFIG.tMin) / (CONFIG.tMax - CONFIG.tMin), 0, 1);
+  const col = `hsl(${210 - frac * 210} 80% 50%)`;
+  const y = yOf(t);
+  $("mercury").setAttribute("y", y);
+  $("mercury").setAttribute("height", 245 - y);
+  $("mercury").setAttribute("fill", col);
+  $("bulb").setAttribute("fill", col);
+  $("tempVal").textContent = t.toFixed(1) + " °C";
+}
+
+function setHum(h) {
+  const v = clamp(h, 0, 100);
+  const a = Math.PI * (1 - Math.max(v, 0.5) / 100);
+  const x = 100 + 80 * Math.cos(a), y = 100 - 80 * Math.sin(a);
+  const col = v < 30 ? "#e0a030" : v <= 60 ? "#2fb36a" : v <= 75 ? "#e0a030" : "#e0503c";
+  $("humArc").setAttribute("d", `M 20 100 A 80 80 0 0 1 ${x.toFixed(2)} ${y.toFixed(2)}`);
+  $("humArc").setAttribute("stroke", col);
+  $("humVal").textContent = h.toFixed(1) + " %";
+  $("humNote").textContent = v < 30 ? "Dry" : v <= 60 ? "Comfortable range (30-60%)" : v <= 75 ? "Humid" : "Very humid";
+}
+
+function drawChart(pts) {
+  if (pts.length < 2) return;
+  const W = 600, H = 200, L = 38, R = 38, T = 10, B = 22;
+  const t0 = pts[0].t, t1 = pts[pts.length - 1].t;
+  const range = k => {
+    let lo = Math.min(...pts.map(p => p[k])), hi = Math.max(...pts.map(p => p[k]));
+    if (hi - lo < 1) { lo -= 0.5; hi += 0.5; }
+    const pad = (hi - lo) * 0.1;
+    return [lo - pad, hi + pad];
+  };
+  const [tl, th] = range("temp"), [hl, hh] = range("hum");
+  const x = t => L + (t - t0) / (t1 - t0 || 1) * (W - L - R);
+  const yy = (v, lo, hi) => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
+  const path = (k, lo, hi) => pts.map((p, i) => (i ? "L" : "M") + x(p.t).toFixed(1) + " " + yy(p[k], lo, hi).toFixed(1)).join(" ");
+  let s = "";
+  for (let i = 0; i <= 3; i++) {
+    const y = T + i / 3 * (H - T - B);
+    s += `<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-dasharray="3 3"/>`;
+    s += `<text x="${L - 4}" y="${y + 3}" font-size="10" fill="var(--tc)" text-anchor="end">${(th - i / 3 * (th - tl)).toFixed(1)}</text>`;
+    s += `<text x="${W - R + 4}" y="${y + 3}" font-size="10" fill="var(--hc)">${(hh - i / 3 * (hh - hl)).toFixed(0)}</text>`;
+  }
+  const fmt = t => new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  s += `<text x="${L}" y="${H - 6}" font-size="10" fill="var(--muted)">${fmt(t0)}</text>`;
+  s += `<text x="${W - R}" y="${H - 6}" font-size="10" fill="var(--muted)" text-anchor="end">${fmt(t1)}</text>`;
+  s += `<path d="${path("hum", hl, hh)}" fill="none" stroke="var(--hc)" stroke-width="2"/>`;
+  s += `<path d="${path("temp", tl, th)}" fill="none" stroke="var(--tc)" stroke-width="2"/>`;
+  $("chart").innerHTML = s;
+}
+
+function updateAge() {
+  if (lastTime == null) return;
+  const age = Math.round((Date.now() - lastTime) / 1000);
+  const stale = age > CONFIG.staleSec;
+  $("dot").style.background = stale ? "#e0503c" : "#2fb36a";
+  $("statusText").textContent = (stale ? "Offline - " : "Live - ") + "last reading " +
+    (age < 90 ? age + " s" : Math.round(age / 60) + " min") + " ago";
+}
+
+async function load() {
+  try {
+    const url = `https://api.thingspeak.com/channels/${CONFIG.channelId}/feeds.json?results=${CONFIG.results}` +
+      (CONFIG.readKey ? `&api_key=${CONFIG.readKey}` : "");
+    const r = await fetch(url);
+    if (!r.ok) throw new Error("ThingSpeak returned HTTP " + r.status + " (check channel ID / read key)");
+    const feeds = (await r.json()).feeds || [];
+    const pts = feeds.map(f => ({
+      t: new Date(f.created_at).getTime(),
+      temp: parseFloat(f.field1), hum: parseFloat(f.field2)
+    })).filter(p => !isNaN(p.temp) && !isNaN(p.hum));
+    if (!pts.length) throw new Error("No readings in the channel yet");
+
+    const last = pts[pts.length - 1];
+    lastTime = last.t;
+    setTemp(last.temp);
+    setHum(last.hum);
+    drawChart(pts);
+
+    const temps = pts.map(p => p.temp);
+    $("tempRange").textContent = `Min ${Math.min(...temps).toFixed(1)} / Max ${Math.max(...temps).toFixed(1)} °C (last ${pts.length} readings)`;
+
+    const withRssi = feeds.filter(f => !isNaN(parseFloat(f.field3)));
+    const rssi = withRssi.length ? parseFloat(withRssi[withRssi.length - 1].field3) : null;
+    $("extra").textContent = rssi !== null ? `Node Wi-Fi signal: ${rssi} dBm` : "\u00a0";
+
+    $("err").style.display = "none";
+    updateAge();
+  } catch (e) {
+    $("err").textContent = "Could not load data: " + e.message;
+    $("err").style.display = "block";
+  }
+}
+
+load();
+setInterval(load, CONFIG.refreshMs);
+setInterval(updateAge, 1000);
+</script>
 </body>
 </html>
